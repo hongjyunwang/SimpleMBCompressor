@@ -166,7 +166,9 @@ bool SimpleMBCompAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* SimpleMBCompAudioProcessor::createEditor()
 {
-    return new SimpleMBCompAudioProcessorEditor (*this);
+    // return new SimpleMBCompAudioProcessorEditor (*this);
+    // Use a default generic plugin GUI as we develop our DSP. We can switch to a custom GUI afterwards
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -181,6 +183,44 @@ void SimpleMBCompAudioProcessor::setStateInformation (const void* data, int size
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout SimpleMBCompAudioProcessor::createParameterLayout()
+{
+    APVTS::ParameterLayout layout;
+    
+    using namespace juce;
+    
+    // Adding numeric parameters
+    layout.add(std::make_unique<AudioParameterFloat>(ParameterID { "Threshold",  1 },
+                                                     "Threshold",
+                                                     NormalisableRange<float>(-60, 12, 1, 1),
+                                                     0));
+    auto attackReleaseRange = NormalisableRange<float>(5, 500, 1, 1);
+    layout.add(std::make_unique<AudioParameterFloat>(ParameterID { "Attack",  1 },
+                                                     "Attack",
+                                                     attackReleaseRange,
+                                                     50));
+    layout.add(std::make_unique<AudioParameterFloat>(ParameterID { "Release",  1 },
+                                                     "Release",
+                                                     attackReleaseRange,
+                                                     250));
+    
+    // Adding threshold choices
+    // Note that juce::AudioParameterChoice requires a juce::StringArray as a constructor argument
+    
+    auto choices = std::vector<double> {1, 1.5, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 50, 100};
+    StringArray sa;
+    for(auto choice : choices){
+        sa.add(String(choice, 1));
+    }
+    // Notice the 3 set as the initial ratio here. This corresponds to the sa element of index 3
+    layout.add(std::make_unique<AudioParameterChoice>(ParameterID { "Ratio",  1 },
+                                                      "Ratio",
+                                                      sa,
+                                                      3));
+    
+    return layout;
 }
 
 //==============================================================================

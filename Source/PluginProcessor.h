@@ -52,6 +52,14 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    using APVTS = juce::AudioProcessorValueTreeState;
+    
+    // A static member function belongs to the class itself rather than to any particular object of the class. This means it can be called without creating an instance of the class.
+    static APVTS::ParameterLayout createParameterLayout();
+    
+    // Initialize tree state apvts here
+    APVTS apvts {*this, nullptr, "Parameters", createParameterLayout()};
 
 private:
     //==============================================================================
