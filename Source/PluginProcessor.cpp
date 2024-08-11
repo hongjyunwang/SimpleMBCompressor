@@ -23,16 +23,16 @@ SimpleMBCompAudioProcessor::SimpleMBCompAudioProcessor()
 #endif
 {
     // Retrieve the necessary pointers to parameters (initializing the pointers)
-    attack = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("Attack"));
-    jassert(attack != nullptr);
-    release = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("Release"));
-    jassert(release != nullptr);
-    threshold = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("Threshold"));
-    jassert(threshold != nullptr);
-    ratio = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter("Ratio"));
-    jassert(ratio != nullptr);
-    bypassed = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter("Bypassed"));
-    jassert(bypassed != nullptr);
+    compressor.attack = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("Attack"));
+    jassert(compressor.attack != nullptr);
+    compressor.release = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("Release"));
+    jassert(compressor.release != nullptr);
+    compressor.threshold = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("Threshold"));
+    jassert(compressor.threshold != nullptr);
+    compressor.ratio = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter("Ratio"));
+    jassert(compressor.ratio != nullptr);
+    compressor.bypassed = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter("Bypassed"));
+    jassert(compressor.bypassed != nullptr);
     
 }
 
@@ -167,18 +167,21 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     
     // The compressor needs a context to process audio and the context needs an audio block to be constructed
     
-    auto block = juce::dsp::AudioBlock<float>(buffer);
-    auto context = juce::dsp::ProcessContextReplacing<float>(block);
+//    auto block = juce::dsp::AudioBlock<float>(buffer);
+//    auto context = juce::dsp::ProcessContextReplacing<float>(block);
+//    
+//    compressor.setAttack(attack -> get());
+//    compressor.setRelease(release -> get());
+//    compressor.setThreshold(threshold -> get());
+//    // Use a helper function to get the ratio value from the choicebox string array
+//    compressor.setRatio(ratio -> getCurrentChoiceName().getFloatValue());
+//    
+//    context.isBypassed = bypassed -> get();
+//    
+//    compressor.process(context);
     
-    compressor.setAttack(attack -> get());
-    compressor.setRelease(release -> get());
-    compressor.setThreshold(threshold -> get());
-    // Use a helper function to get the ratio value from the choicebox string array
-    compressor.setRatio(ratio -> getCurrentChoiceName().getFloatValue());
-    
-    context.isBypassed = bypassed -> get();
-    
-    compressor.process(context);
+    compressor.updateCompressorSettings();
+    compressor.process(buffer);
 }
 
 //==============================================================================
