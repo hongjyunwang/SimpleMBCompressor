@@ -165,21 +165,6 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     
-    // The compressor needs a context to process audio and the context needs an audio block to be constructed
-    
-//    auto block = juce::dsp::AudioBlock<float>(buffer);
-//    auto context = juce::dsp::ProcessContextReplacing<float>(block);
-//    
-//    compressor.setAttack(attack -> get());
-//    compressor.setRelease(release -> get());
-//    compressor.setThreshold(threshold -> get());
-//    // Use a helper function to get the ratio value from the choicebox string array
-//    compressor.setRatio(ratio -> getCurrentChoiceName().getFloatValue());
-//    
-//    context.isBypassed = bypassed -> get();
-//    
-//    compressor.process(context);
-    
     compressor.updateCompressorSettings();
     compressor.process(buffer);
 }
