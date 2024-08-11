@@ -31,6 +31,8 @@ SimpleMBCompAudioProcessor::SimpleMBCompAudioProcessor()
     jassert(threshold != nullptr);
     ratio = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter("Ratio"));
     jassert(ratio != nullptr);
+    bypassed = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter("Bypassed"));
+    jassert(bypassed != nullptr);
     
 }
 
@@ -174,6 +176,8 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // Use a helper function to get the ratio value from the choicebox string array
     compressor.setRatio(ratio -> getCurrentChoiceName().getFloatValue());
     
+    context.isBypassed = bypassed -> get();
+    
     compressor.process(context);
 }
 
@@ -249,6 +253,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleMBCompAudioProcessor::
                                                       "Ratio",
                                                       sa,
                                                       3));
+    
+    layout.add(std::make_unique<AudioParameterBool>(ParameterID { "Bypassed",  1 }, "Bypassed", false));
     
     return layout;
 }
