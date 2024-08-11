@@ -24,6 +24,10 @@
 
 namespace Params
 {
+
+// Names is an enumerator. For example, we access a "Low Mid Crossover Freq"'s number through "Names::Low_Mid_Crossover_Freq"
+// params is a map that maps the enumerated parameter to a string that is the parameter ID
+
 enum Names
 {
     Low_Mid_Crossover_Freq,
@@ -170,6 +174,15 @@ public:
 private:
     
     CompressorBand compressor;
+    
+    using Filter = juce::dsp::LinkwitzRileyFilter<float>;
+    Filter LP, HP;
+    
+    juce::AudioParameterFloat* lowCrossover {nullptr};
+    
+    // We need to create two separate audio buffers for the LP and the HP to correctly handle the multi-band processing
+    // We store the two buffers here in the array filterBuffers
+    std::array<juce::AudioBuffer<float>, 2> filterBuffers;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleMBCompAudioProcessor)
 };
