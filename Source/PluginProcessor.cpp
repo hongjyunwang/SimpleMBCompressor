@@ -23,39 +23,52 @@ SimpleMBCompAudioProcessor::SimpleMBCompAudioProcessor()
 #endif
 {
     // Retrieve the necessary pointers to parameters (initializing the pointers) through helper functions
-
     using namespace Params;
     const auto& params = GetParams();
     
-    // lambda helper function
+    // Retrieve pointers to float type parameters
     auto floatHelper = [&apvts = this -> apvts, &params](auto& param, const auto& paramName)
     {
         param = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(params.at(paramName)));
         jassert(param != nullptr);
     };
     
-    floatHelper(compressor.attack, Names::Attack_Low_Band);
-    floatHelper(compressor.release, Names::Release_Low_Band);
-    floatHelper(compressor.threshold, Names::Threshold_Low_Band);
+    floatHelper(lowBandComp.attack,     Names::Attack_Low_Band);
+    floatHelper(lowBandComp.release,    Names::Release_Low_Band);
+    floatHelper(lowBandComp.threshold,  Names::Threshold_Low_Band);
     
+    floatHelper(midBandComp.attack,     Names::Attack_Mid_Band);
+    floatHelper(midBandComp.release,    Names::Release_Mid_Band);
+    floatHelper(midBandComp.threshold,  Names::Threshold_Mid_Band);
+    
+    floatHelper(highBandComp.attack,    Names::Attack_High_Band);
+    floatHelper(highBandComp.release,   Names::Release_High_Band);
+    floatHelper(highBandComp.threshold, Names::Threshold_High_Band);
+    
+    floatHelper(lowMidCrossover,    Names::Low_Mid_Crossover_Freq);
+    floatHelper(midHighCrossover,   Names::Mid_High_Crossover_Freq);
+    
+    // Retrieve pointers to choice type parameters
     auto choiceHelper = [&apvts = this -> apvts, &params](auto& param, const auto& paramName)
     {
         param = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(params.at(paramName)));
         jassert(param != nullptr);
     };
     
-    choiceHelper(compressor.ratio, Names::Ratio_Low_Band);
+    choiceHelper(lowBandComp.ratio,     Names::Ratio_Low_Band);
+    choiceHelper(midBandComp.ratio,     Names::Ratio_Mid_Band);
+    choiceHelper(highBandComp.ratio,    Names::Ratio_High_Band);
     
+    // Retrieve pointers to bool type parameters
     auto boolHelper = [&apvts = this -> apvts, &params](auto& param, const auto& paramName)
     {
         param = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(params.at(paramName)));
         jassert(param != nullptr);
     };
      
-    boolHelper(compressor.bypassed, Names::Bypassed_Low_Band);
-    
-    floatHelper(lowMidCrossover, Names::Low_Mid_Crossover_Freq);
-    floatHelper(midHighCrossover, Names::Mid_High_Crossover_Freq);
+    boolHelper(lowBandComp.bypassed,    Names::Bypassed_Low_Band);
+    boolHelper(midBandComp.bypassed,    Names::Bypassed_Mid_Band);
+    boolHelper(highBandComp.bypassed,   Names::Bypassed_High_Band);
     
     // Set the filter types
     LP1.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
@@ -145,7 +158,10 @@ void SimpleMBCompAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     spec.numChannels = getTotalNumOutputChannels();
     spec.sampleRate = sampleRate;
     
-    compressor.prepare(spec);
+    for(auto& comp : compressors){
+        comp.prepare(spec);
+    }
+    
     LP1.prepare(spec);
     HP1.prepare(spec);
     
@@ -206,9 +222,10 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     
-//    compressor.updateCompressorSettings();
-//    compressor.process(buffer);
-    
+    for(auto& comp : compressors){
+        comp.updateCompressorSettings();
+    }
+        
     // First, we copy the input buffer into two separate buffers. One for the lowpass and one for the highpass, and we process them separately
     
     // For loop here used to copy the single input buffer into filterBuffers
@@ -245,13 +262,13 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // Mid Band
     HP2.process(fb2Ctx);
     
+    for(size_t i = 0; i < filterBuffers.size(); ++i){
+        compressors[i].process(filterBuffers[i]);
+    }
+    
     // Next, we need to sum the two individually processed buffers into a single buffer
     auto numSamples = buffer.getNumSamples();
     auto numChannels = buffer.getNumChannels();
-    
-    if(compressor.bypassed -> get()){
-        return;
-    }
     
     buffer.clear();
     

@@ -16,7 +16,7 @@
  2) Create parameters to control where the split happens (v)
  3) Prove that splitting into 3 bands produces no audible artifacts (v)
  4) Create audio parameters for the 3 compressor bands. These need to live on each band instance (v)
- 5) Create the 2 remaining compressors 
+ 5) Create the 2 remaining compressors
  6) Add ability to mute/solo/bypass individual compressors
  7) Add input and output gain to offset changes in output level
  8) Clean up
@@ -173,7 +173,11 @@ public:
 
 private:
     
-    CompressorBand compressor;
+    // Array of CompressorBand objects
+    std::array<CompressorBand, 3> compressors;
+    CompressorBand& lowBandComp = compressors[0];
+    CompressorBand& midBandComp = compressors[1];
+    CompressorBand& highBandComp = compressors[2];
     
     using Filter = juce::dsp::LinkwitzRileyFilter<float>;
     // Since filters are constructed through delays, we need to make sure the timing of all bands are the same
@@ -188,6 +192,7 @@ private:
     
     // We need to create three separate audio buffers for the each band to correctly handle the multi-band processing
     // We store the buffers here in the array filterBuffers
+    // Array of AudioBuffer<float> objects
     std::array<juce::AudioBuffer<float>, 3> filterBuffers;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleMBCompAudioProcessor)
