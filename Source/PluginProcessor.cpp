@@ -54,11 +54,17 @@ SimpleMBCompAudioProcessor::SimpleMBCompAudioProcessor()
      
     boolHelper(compressor.bypassed, Names::Bypassed_Low_Band);
     
-    floatHelper(lowCrossover, Names::Low_Mid_Crossover_Freq);
+    floatHelper(lowMidCrossover, Names::Low_Mid_Crossover_Freq);
+    floatHelper(midHighCrossover, Names::Mid_High_Crossover_Freq);
     
     // Set the filter types
-    LP.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
-    LP.setType(juce::dsp::LinkwitzRileyFilterType::highpass);
+    LP1.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
+    HP1.setType(juce::dsp::LinkwitzRileyFilterType::highpass);
+    
+    AP2.setType(juce::dsp::LinkwitzRileyFilterType::allpass);
+    
+    LP2.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
+    HP2.setType(juce::dsp::LinkwitzRileyFilterType::highpass);
 }
 
 SimpleMBCompAudioProcessor::~SimpleMBCompAudioProcessor()
@@ -140,8 +146,13 @@ void SimpleMBCompAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     spec.sampleRate = sampleRate;
     
     compressor.prepare(spec);
-    LP.prepare(spec);
-    HP.prepare(spec);
+    LP1.prepare(spec);
+    HP1.prepare(spec);
+    
+    AP2.prepare(spec);
+    
+    LP2.prepare(spec);
+    HP2.prepare(spec);
     
     for(auto& buffer : filterBuffers){
         buffer.setSize(spec.numChannels, samplesPerBlock);
@@ -205,22 +216,43 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         fb = buffer;
     }
     
-    auto cutoff = lowCrossover -> get();
-    LP.setCutoffFrequency(cutoff);
-    HP.setCutoffFrequency(cutoff);
+    auto lowMidCutoffFreq = lowMidCrossover -> get();
+    LP1.setCutoffFrequency(lowMidCutoffFreq);
+    HP1.setCutoffFrequency(lowMidCutoffFreq);
+    
+    auto midHighCutoffFreq = midHighCrossover -> get();
+    AP2.setCutoffFrequency(midHighCutoffFreq);
+    LP2.setCutoffFrequency(midHighCutoffFreq);
+    HP2.setCutoffFrequency(midHighCutoffFreq);
     
     auto fb0Block = juce::dsp::AudioBlock<float>(filterBuffers[0]);
     auto fb1Block = juce::dsp::AudioBlock<float>(filterBuffers[1]);
+    auto fb2Block = juce::dsp::AudioBlock<float>(filterBuffers[2]);
     
     auto fb0Ctx = juce::dsp::ProcessContextReplacing<float>(fb0Block);
     auto fb1Ctx = juce::dsp::ProcessContextReplacing<float>(fb1Block);
+    auto fb2Ctx = juce::dsp::ProcessContextReplacing<float>(fb2Block);
     
-    LP.process(fb0Ctx);
-    HP.process(fb1Ctx);
+    // Low Band
+    LP1.process(fb0Ctx);
+    AP2.process(fb0Ctx);
+    
+    // High Band
+    HP1.process(fb1Ctx);
+    filterBuffers[2] = filterBuffers[1];
+    LP2.process(fb1Ctx);
+    
+    // Mid Band
+    HP2.process(fb2Ctx);
     
     // Next, we need to sum the two individually processed buffers into a single buffer
     auto numSamples = buffer.getNumSamples();
     auto numChannels = buffer.getNumChannels();
+    
+    if(compressor.bypassed -> get()){
+        return;
+    }
+    
     buffer.clear();
     
     auto addFilterBand = [nc = numChannels, ns = numSamples](auto& inputBuffer, const auto& source)
@@ -232,6 +264,7 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     
     addFilterBand(buffer, filterBuffers[0]);
     addFilterBand(buffer, filterBuffers[1]);
+    addFilterBand(buffer, filterBuffers[2]);
 }
 
 //==============================================================================
@@ -315,8 +348,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleMBCompAudioProcessor::
     
     layout.add(std::make_unique<AudioParameterFloat>(ParameterID {params.at(Names::Low_Mid_Crossover_Freq), 1},
                                                      params.at(Names::Low_Mid_Crossover_Freq),
-                                                     NormalisableRange<float>(20, 2000, 1, 1),
-                                                     500));
+                                                     NormalisableRange<float>(20, 999, 1, 1),
+                                                     400));
+    
+    layout.add(std::make_unique<AudioParameterFloat>(ParameterID {params.at(Names::Mid_High_Crossover_Freq), 1},
+                                                     params.at(Names::Mid_High_Crossover_Freq),
+                                                     NormalisableRange<float>(1000, 20000, 1, 1),
+                                                     2000));
     
     return layout;
 }
