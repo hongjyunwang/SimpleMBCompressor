@@ -359,9 +359,9 @@ bool SimpleMBCompAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* SimpleMBCompAudioProcessor::createEditor()
 {
-    // return new SimpleMBCompAudioProcessorEditor (*this);
+    return new SimpleMBCompAudioProcessorEditor (*this);
     // Use a default generic plugin GUI as we develop our DSP. We can switch to a custom GUI afterwards
-    return new juce::GenericAudioProcessorEditor(*this);
+    // return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
