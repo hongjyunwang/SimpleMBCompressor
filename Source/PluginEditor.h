@@ -45,6 +45,11 @@ struct Placeholder : juce::Component
     juce::Colour customColor;
 };
 
+struct GlobalControls : juce::Component
+{
+    void paint(juce::Graphics& g) override;
+};
+
 class SimpleMBCompAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
@@ -60,7 +65,8 @@ private:
     // access the processor object that created it.
     SimpleMBCompAudioProcessor& audioProcessor;
     
-    Placeholder controlBar, analyzer, globalControls, bandControls;
-
+    Placeholder controlBar, analyzer, /*globalControls,*/ bandControls;
+    GlobalControls globalControls;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleMBCompAudioProcessorEditor)
 };
