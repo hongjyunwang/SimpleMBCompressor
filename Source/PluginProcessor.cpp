@@ -48,6 +48,9 @@ SimpleMBCompAudioProcessor::SimpleMBCompAudioProcessor()
     floatHelper(lowMidCrossover,    Names::Low_Mid_Crossover_Freq);
     floatHelper(midHighCrossover,   Names::Mid_High_Crossover_Freq);
     
+    floatHelper(inputGainParam,    Names::Gain_In);
+    floatHelper(outputGainParam,   Names::Gain_Out);
+    
     // Retrieve pointers to choice type parameters
     auto choiceHelper = [&apvts = this -> apvts, &params](auto& param, const auto& paramName)
     {
@@ -178,6 +181,12 @@ void SimpleMBCompAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     LP2.prepare(spec);
     HP2.prepare(spec);
     
+    inputGain.prepare(spec);
+    outputGain.prepare(spec);
+    // Set a 50ms ramp time to prevent clicks and pops
+    inputGain.setRampDurationSeconds(0.05);
+    outputGain.setRampDurationSeconds(0.05);
+    
     for(auto& buffer : filterBuffers){
         buffer.setSize(spec.numChannels, samplesPerBlock);
     }
@@ -230,17 +239,26 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     
+    // Update compressor settings
     for(auto& comp : compressors){
         comp.updateCompressorSettings();
     }
-        
-    // First, we copy the input buffer into two separate buffers. One for the lowpass and one for the highpass, and we process them separately
+    
+    // Update input and output gain settings
+    inputGain.setGainDecibels(inputGainParam -> get());
+    outputGain.setGainDecibels(outputGainParam -> get());
+    
+    // Apply input gain before we do any compression
+    applyGain(buffer, inputGain);
+    
+    // First, we copy the input buffer into each band's buffer. We then process each band separately. Finally, we merge the bands.
     
     // For loop here used to copy the single input buffer into filterBuffers
     for(auto& fb : filterBuffers){
         fb = buffer;
     }
     
+    // Set cutoff frequencies
     auto lowMidCutoffFreq = lowMidCrossover -> get();
     LP1.setCutoffFrequency(lowMidCutoffFreq);
     HP1.setCutoffFrequency(lowMidCutoffFreq);
@@ -250,6 +268,7 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     LP2.setCutoffFrequency(midHighCutoffFreq);
     HP2.setCutoffFrequency(midHighCutoffFreq);
     
+    // Set necessary process contexts
     auto fb0Block = juce::dsp::AudioBlock<float>(filterBuffers[0]);
     auto fb1Block = juce::dsp::AudioBlock<float>(filterBuffers[1]);
     auto fb2Block = juce::dsp::AudioBlock<float>(filterBuffers[2]);
@@ -258,18 +277,20 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto fb1Ctx = juce::dsp::ProcessContextReplacing<float>(fb1Block);
     auto fb2Ctx = juce::dsp::ProcessContextReplacing<float>(fb2Block);
     
-    // Low Band
+    // LinkwitzRiley Process Low Band filter
     LP1.process(fb0Ctx);
     AP2.process(fb0Ctx);
     
-    // High Band
+    // LinkwitzRiley Process High Band filter
     HP1.process(fb1Ctx);
     filterBuffers[2] = filterBuffers[1];
     LP2.process(fb1Ctx);
     
-    // Mid Band
+    // LinkwitzRiley Process Mid Band filter
     HP2.process(fb2Ctx);
     
+    // Compress each individual band
+    // Note that the bypass functionality is done within the process function
     for(size_t i = 0; i < filterBuffers.size(); ++i){
         compressors[i].process(filterBuffers[i]);
     }
@@ -278,8 +299,10 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto numSamples = buffer.getNumSamples();
     auto numChannels = buffer.getNumChannels();
     
+    // Clear the input buffer
     buffer.clear();
     
+    // Helper function to add the filter bands
     auto addFilterBand = [nc = numChannels, ns = numSamples](auto& inputBuffer, const auto& source)
     {
         for(auto i = 0; i < nc; ++i){
@@ -296,7 +319,7 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
     
-    // Solo process the bands
+    // Add the bands and incorporating mute/solo functionalities
     if(bandsAreSoloed){
         for(size_t i = 0; i < compressors.size(); ++i){
             auto& comp = compressors[i];
@@ -312,6 +335,9 @@ void SimpleMBCompAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             }
         }
     }
+    
+    // Apply output gain after the processing
+    applyGain(buffer, outputGain);
 }
 
 //==============================================================================
@@ -360,7 +386,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleMBCompAudioProcessor::
     using namespace Params;
     const auto& params = GetParams();
     
-    // Adding numeric parameters (Threshold, attack, release, )
+    // Adding numeric parameters (Threshold, attack, release, Gain)
+    auto gainRange = NormalisableRange<float>(-24.0f, 24.0f, 0.5f, 1.0f);
+    layout.add(std::make_unique<AudioParameterFloat>(ParameterID {params.at(Names::Gain_In), 1},
+                                                     params.at(Names::Gain_In),
+                                                     gainRange,
+                                                     0));
+    layout.add(std::make_unique<AudioParameterFloat>(ParameterID {params.at(Names::Gain_Out), 1},
+                                                     params.at(Names::Gain_Out),
+                                                     gainRange,
+                                                     0));
+    
     layout.add(std::make_unique<AudioParameterFloat>(ParameterID {params.at(Names::Threshold_Low_Band), 1},
                                                      params.at(Names::Threshold_Low_Band),
                                                      NormalisableRange<float>(-60, 12, 1, 1),
