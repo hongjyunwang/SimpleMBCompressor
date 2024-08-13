@@ -159,6 +159,23 @@ void LookAndFeel::drawToggleButton(juce::Graphics &g,
         
         g.strokePath(analyzerButton->randomPath, PathStrokeType(1.f));
     }
+    else
+    {
+        auto bounds = toggleButton.getLocalBounds().reduced(2);
+        auto buttonIsOn = toggleButton.getToggleState();
+        const int cornersize = 4;
+        
+        // Draw the body of the rounded rectangle
+        g.setColour(buttonIsOn ? juce::Colours::white : juce::Colours::black);
+        g.fillRoundedRectangle(bounds.toFloat(), cornersize);
+        
+        // Draw the outline of the rectangle
+        g.setColour(buttonIsOn ? juce::Colours::black : juce::Colours::white);
+        g.drawRoundedRectangle(bounds.toFloat(), cornersize, 1);
+        
+        // Draw the text
+        g.drawFittedText(toggleButton.getName(), bounds, juce::Justification::centred, 1);
+    }
 }
 
 void RotarySliderWithLabels::paint(juce::Graphics &g)
@@ -359,6 +376,16 @@ ratioSlider(nullptr, "")
                          Names::Ratio_Mid_Band,
                          ratioSlider);
     
+    makeAttachmentHelper(bypassButtonAttachment,
+                         Names::Bypassed_Mid_Band,
+                         bypassButton);
+    makeAttachmentHelper(soloButtonAttachment,
+                         Names::Solo_Mid_Band,
+                         soloButton);
+    makeAttachmentHelper(muteButtonAttachment,
+                         Names::Mute_Mid_Band,
+                         muteButton);
+    
     // Add the labels on the left and right corners of the slider
     addLabelPairs(attackSlider.labels, getParamHelper(Names::Attack_Mid_Band), "ms");
     addLabelPairs(releaseSlider.labels, getParamHelper(Names::Release_Mid_Band), "ms");
@@ -373,12 +400,56 @@ ratioSlider(nullptr, "")
     addAndMakeVisible(releaseSlider);
     addAndMakeVisible(thresholdSlider);
     addAndMakeVisible(ratioSlider);
+    
+    bypassButton.setName("X");
+    soloButton.setName("S");
+    muteButton.setName("M");
+    
+    addAndMakeVisible(bypassButton);
+    addAndMakeVisible(soloButton);
+    addAndMakeVisible(muteButton);
+    
+    lowBand.setName("Low");
+    midBand.setName("Mid");
+    highBand.setName("High");
+    
+    // The RadioGroupId allows for the functionaltiy that only one band will be selected at once
+    lowBand.setRadioGroupId(1);
+    midBand.setRadioGroupId(1);
+    highBand.setRadioGroupId(1);
+    
+    addAndMakeVisible(lowBand);
+    addAndMakeVisible(midBand);
+    addAndMakeVisible(highBand);
 }
 
 void CompressorBandControls::resized()
 {
     auto bounds = getLocalBounds().reduced(5);
     using namespace juce;
+    
+    // Create a flexbox to wrap the vertical arrangement of buttons
+    auto createBandButtonControlBox = [](std::vector<Component*> comps)
+    {
+        FlexBox flexBox;
+        flexBox.flexDirection = FlexBox::Direction::column;
+        flexBox.flexWrap = FlexBox::Wrap::noWrap;
+        
+        auto spacer = FlexItem().withHeight(2);
+        
+        for(auto* comp : comps)
+        {
+            flexBox.items.add(spacer);
+            flexBox.items.add(FlexItem(*comp).withFlex(1.f));
+        }
+        flexBox.items.add(spacer);
+        
+        return flexBox;
+    };
+    
+    auto bandButtonControlBox = createBandButtonControlBox({&bypassButton, &soloButton, &muteButton});
+    auto bandSelectControlBox = createBandButtonControlBox({&lowBand, &midBand, &highBand});
+
     
     // A flexbox is a GUI object that is essentially a big box containing smaller boxes
     FlexBox flexBox;
@@ -388,7 +459,10 @@ void CompressorBandControls::resized()
     auto spacer = FlexItem().withWidth(4);
     auto endCap = FlexItem().withWidth(6);
     
-    flexBox.items.add(endCap);
+//    flexBox.items.add(endCap);
+    flexBox.items.add(spacer);
+    flexBox.items.add(FlexItem(bandSelectControlBox).withWidth(50));
+    flexBox.items.add(spacer);
     flexBox.items.add(FlexItem(attackSlider).withFlex(1.f));
     flexBox.items.add(spacer);
     flexBox.items.add(FlexItem(releaseSlider).withFlex(1.f));
@@ -396,7 +470,9 @@ void CompressorBandControls::resized()
     flexBox.items.add(FlexItem(thresholdSlider).withFlex(1.f));
     flexBox.items.add(spacer);
     flexBox.items.add(FlexItem(ratioSlider).withFlex(1.f));
-    flexBox.items.add(endCap);
+//    flexBox.items.add(endCap);
+    flexBox.items.add(spacer);
+    flexBox.items.add(FlexItem(bandButtonControlBox).withWidth(30));
     
     flexBox.performLayout(bounds);
 }
