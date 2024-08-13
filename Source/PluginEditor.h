@@ -50,10 +50,13 @@ struct RotarySliderWithLabels : juce::Slider
     // Constructor with initializer list
     // "juce::Slider(...)" Initializes the base class juce::Slider with specific parameters
     // setLookAndFeel is a member function of the Slider class
-    RotarySliderWithLabels(juce::RangedAudioParameter& rap, const juce::String& unitSuffix) :
+    RotarySliderWithLabels(juce::RangedAudioParameter& rap, 
+                           const juce::String& unitSuffix,
+                           const juce::String& title /*= "NO TITLE"*/) :
     juce::Slider(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag,
                  juce::Slider::TextEntryBoxPosition::NoTextBox), param(&rap), suffix(unitSuffix)
     {
+        setName(title);
         setLookAndFeel(&lnf);
     }
     
