@@ -249,12 +249,6 @@ juce::String RotarySliderWithLabels::getDisplayString() const
     {
         float val = getValue();
         
-//        if( val > 999.f )
-//        {
-//            val /= 1000.f; //1001 / 1000 = 1.001
-//            addK = true;
-//        }
-        
         addK = truncateKiloValue(val);
         
         str = juce::String(val, (addK ? 2 : 0));
@@ -276,13 +270,157 @@ juce::String RotarySliderWithLabels::getDisplayString() const
     return str;
 }
 
+void RotarySliderWithLabels::changeParam(juce::RangedAudioParameter* p)
+{
+    param = p;
+    repaint();
+}
+//==============================================================================
+juce::String RatioSlider::getDisplayString() const
+{
+    auto choiceParam = dynamic_cast<juce::AudioParameterChoice*>(param);
+    jassert(choiceParam != nullptr);
+    
+    auto currentChoice = choiceParam -> getCurrentChoiceName();
+    if(currentChoice.contains(".0"))
+        currentChoice = currentChoice.substring(0, currentChoice.indexOf("."));
+    
+    currentChoice << ":1";
+    
+    return currentChoice;
+}
+
+
 //==============================================================================
 Placeholder::Placeholder()
 {
     juce::Random r;
     customColor = juce::Colour(r.nextInt(255), r.nextInt(255), r.nextInt(255));
 }
+//==============================================================================
+CompressorBandControls::CompressorBandControls(juce::AudioProcessorValueTreeState& apv) :
+apvts(apv),
+attackSlider(nullptr, "ms", "ATTACK"),
+releaseSlider(nullptr, "ms", "RELEASE"),
+thresholdSlider(nullptr, "dB", "THRESHOLD"),
+ratioSlider(nullptr, "")
+{
+    // Retrieve the parameter map we declared in PluginProcessor.h
+    using namespace Params;
+    const auto& params = GetParams();
+    
+    // Initialize pointers to the parameters
+    auto getParamHelper = [&params, &apvts = this -> apvts](const auto& name) -> auto&
+    {
+        /*
+         This is essentially a wrapper around the function "getParam"
+         
+         Inputs:
+         - name: reference to the name of the parameter
+         Outputs:
+         - Returns a reference to the parameter itself
+         */
+        
+        return getParam(apvts, params, name);
+    };
+    
+    attackSlider.changeParam(&getParamHelper(Names::Attack_Mid_Band));
+    releaseSlider.changeParam(&getParamHelper(Names::Release_Mid_Band));
+    thresholdSlider.changeParam(&getParamHelper(Names::Threshold_Mid_Band));
+    ratioSlider.changeParam(&getParamHelper(Names::Ratio_Mid_Band));
+    
+    
+    // Make slider attachments to the apvts
+    auto makeAttachmentHelper = [&params, &apvts = this -> apvts](auto& attachment, const auto& name, auto& slider)
+    {
+        /*
+         This is essentially a wrapper around the function "makeAttachment"
+         
+         Inputs:
+         - attachment: reference to pointer unique_ptr<Attachment>
+         - name: reference to the name of the parameter
+         - slider: reference to a Slider object
+         Outputs:
+         - No return
+         - Creates an attachment between the slider and the parameter
+         */
+        makeAttachment(attachment, apvts, params, name, slider);
+    };
+    makeAttachmentHelper(attackSliderAttachment,
+                         Names::Attack_Mid_Band,
+                         attackSlider);
+    makeAttachmentHelper(releaseSliderAttachment,
+                         Names::Release_Mid_Band,
+                         releaseSlider);
+    makeAttachmentHelper(thresholdSliderAttachment,
+                         Names::Threshold_Mid_Band,
+                         thresholdSlider);
+    makeAttachmentHelper(ratioSliderAttachment,
+                         Names::Ratio_Mid_Band,
+                         ratioSlider);
+    
+    // Add the labels on the left and right corners of the slider
+    addLabelPairs(attackSlider.labels, getParamHelper(Names::Attack_Mid_Band), "ms");
+    addLabelPairs(releaseSlider.labels, getParamHelper(Names::Release_Mid_Band), "ms");
+    addLabelPairs(thresholdSlider.labels, getParamHelper(Names::Threshold_Mid_Band), "dB");
+    // Note that the labels for the ratio is slightly trickier to set. We do this manually as it is a choice parameter, making it different
+    ratioSlider.labels.add({0.f, "1:1"});
+    auto ratioParam = dynamic_cast<juce::AudioParameterChoice*>(&getParamHelper(Names::Ratio_Mid_Band));
+    ratioSlider.labels.add({1.f,
+        juce::String(ratioParam -> choices.getReference(ratioParam -> choices.size() - 1).getIntValue()) + ":1"});
+    
+    addAndMakeVisible(attackSlider);
+    addAndMakeVisible(releaseSlider);
+    addAndMakeVisible(thresholdSlider);
+    addAndMakeVisible(ratioSlider);
+}
 
+void CompressorBandControls::resized()
+{
+    auto bounds = getLocalBounds().reduced(5);
+    using namespace juce;
+    
+    // A flexbox is a GUI object that is essentially a big box containing smaller boxes
+    FlexBox flexBox;
+    flexBox.flexDirection = FlexBox::Direction::row;
+    flexBox.flexWrap = FlexBox::Wrap::noWrap;
+    
+    auto spacer = FlexItem().withWidth(4);
+    auto endCap = FlexItem().withWidth(6);
+    
+    flexBox.items.add(endCap);
+    flexBox.items.add(FlexItem(attackSlider).withFlex(1.f));
+    flexBox.items.add(spacer);
+    flexBox.items.add(FlexItem(releaseSlider).withFlex(1.f));
+    flexBox.items.add(spacer);
+    flexBox.items.add(FlexItem(thresholdSlider).withFlex(1.f));
+    flexBox.items.add(spacer);
+    flexBox.items.add(FlexItem(ratioSlider).withFlex(1.f));
+    flexBox.items.add(endCap);
+    
+    flexBox.performLayout(bounds);
+}
+
+void drawModuleBackground(juce::Graphics &g, juce::Rectangle<int> bounds)
+{
+    using namespace juce;
+    g.setColour(Colours::blueviolet);
+    g.fillAll();
+    
+    auto localBounds = bounds;
+    
+    bounds.reduce(3, 3);
+    g.setColour(Colours::black);
+    g.fillRoundedRectangle(bounds.toFloat(), 3);
+    
+    g.drawRect(localBounds);
+}
+
+void CompressorBandControls::paint(juce::Graphics &g)
+{
+    auto bounds = getLocalBounds();
+    drawModuleBackground(g, bounds);
+}
 //==============================================================================
 GlobalControls::GlobalControls(juce::AudioProcessorValueTreeState& apvts)
 {
@@ -310,10 +448,10 @@ GlobalControls::GlobalControls(juce::AudioProcessorValueTreeState& apvts)
     auto& midHighParam = getParamHelper(Names::Mid_High_Crossover_Freq);
     auto& gainOutParam = getParamHelper(Names::Gain_Out);
     
-    inGainSlider = std::make_unique<RSWL>(gainInParam, "dB", "INPUT GAIN");
-    lowMidXoverSlider = std::make_unique<RSWL>(lowMidParam, "Hz", "LOW-MID X-OVER");
-    midHighXoverSlider = std::make_unique<RSWL>(midHighParam, "Hz", "MID-HI X-OVER");
-    outGainSlider = std::make_unique<RSWL>(gainOutParam, "dB", "OUTPUT GAIN");
+    inGainSlider = std::make_unique<RSWL>(&gainInParam, "dB", "INPUT GAIN");
+    lowMidXoverSlider = std::make_unique<RSWL>(&lowMidParam, "Hz", "LOW-MID X-OVER");
+    midHighXoverSlider = std::make_unique<RSWL>(&midHighParam, "Hz", "MID-HI X-OVER");
+    outGainSlider = std::make_unique<RSWL>(&gainOutParam, "dB", "OUTPUT GAIN");
     
     // Make slider attachments to the apvts
     auto makeAttachmentHelper = [&params, &apvts](auto& attachment, const auto& name, auto& slider)
@@ -359,18 +497,8 @@ GlobalControls::GlobalControls(juce::AudioProcessorValueTreeState& apvts)
 
 void GlobalControls::paint(juce::Graphics &g)
 {
-    using namespace juce;
     auto bounds = getLocalBounds();
-    g.setColour(Colours::blueviolet);
-    g.fillAll();
-    
-    auto localBounds = bounds;
-    
-    bounds.reduce(3, 3);
-    g.setColour(Colours::black);
-    g.fillRoundedRectangle(bounds.toFloat(), 3);
-    
-    g.drawRect(localBounds);
+    drawModuleBackground(g, bounds);
 }
 
 void GlobalControls::resized()
@@ -405,15 +533,17 @@ SimpleMBCompAudioProcessorEditor::SimpleMBCompAudioProcessorEditor (SimpleMBComp
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
+    setLookAndFeel(&lnf);
     // addAndMakeVisible(controlBar);
     // addAndMakeVisible(analyzer);
     addAndMakeVisible(globalControls);
-    // addAndMakeVisible(bandControls);
+    addAndMakeVisible(bandControls);
     setSize (600, 500);
 }
 
 SimpleMBCompAudioProcessorEditor::~SimpleMBCompAudioProcessorEditor()
 {
+    setLookAndFeel(nullptr);
 }
 
 //==============================================================================

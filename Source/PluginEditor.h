@@ -50,19 +50,13 @@ struct RotarySliderWithLabels : juce::Slider
     // Constructor with initializer list
     // "juce::Slider(...)" Initializes the base class juce::Slider with specific parameters
     // setLookAndFeel is a member function of the Slider class
-    RotarySliderWithLabels(juce::RangedAudioParameter& rap, 
+    RotarySliderWithLabels(juce::RangedAudioParameter* rap,
                            const juce::String& unitSuffix,
                            const juce::String& title /*= "NO TITLE"*/) :
     juce::Slider(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag,
-                 juce::Slider::TextEntryBoxPosition::NoTextBox), param(&rap), suffix(unitSuffix)
+                 juce::Slider::TextEntryBoxPosition::NoTextBox), param(rap), suffix(unitSuffix)
     {
         setName(title);
-        setLookAndFeel(&lnf);
-    }
-    
-    ~RotarySliderWithLabels()
-    {
-        setLookAndFeel(nullptr);
     }
     
     struct LabelPos
@@ -76,12 +70,25 @@ struct RotarySliderWithLabels : juce::Slider
     void paint(juce::Graphics& g) override;
     juce::Rectangle<int> getSliderBounds() const;
     int getTextHeight() const { return 14; }
-    juce::String getDisplayString() const;
-private:
-    LookAndFeel lnf;
+    // Made a virtual function so RatioSlider can override it
+    virtual juce::String getDisplayString() const;
     
+    void changeParam(juce::RangedAudioParameter* p);
+    
+protected:
     juce::RangedAudioParameter* param;
     juce::String suffix;
+};
+
+struct RatioSlider : RotarySliderWithLabels
+{
+    // This struct is made specifically for the ratio slider. It inherits from RotarySliderWithLabels
+    // The RotarySliderWithLabels is initialized to the ratio parameter
+    
+    RatioSlider(juce::RangedAudioParameter* rap, const juce::String& unitSuffix) : RotarySliderWithLabels(rap, unitSuffix, "RATIO") {}
+    
+    // RatioSlider gets its own getDisplayString function because its displaystring needs to be the ratio and not a float value
+    juce::String getDisplayString() const override;
 };
 
 struct PowerButton : juce::ToggleButton { };
@@ -133,7 +140,26 @@ struct RotarySlider : juce::Slider
     { }
 };
 
-template<typename Attachment, 
+struct CompressorBandControls : juce::Component
+{
+    CompressorBandControls(juce::AudioProcessorValueTreeState& apvts);
+    void paint(juce::Graphics& g) override;
+    void resized() override;
+    
+private:
+    juce::AudioProcessorValueTreeState& apvts;
+    
+    RotarySliderWithLabels attackSlider, releaseSlider, thresholdSlider;
+    RatioSlider ratioSlider;
+    
+    using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
+    std::unique_ptr<Attachment> attackSliderAttachment,
+                                releaseSliderAttachment,
+                                thresholdSliderAttachment,
+                                ratioSliderAttachment;
+};
+
+template<typename Attachment,
          typename APVTS,
          typename Params,
          typename ParamName,
@@ -241,12 +267,16 @@ public:
     void resized() override;
 
 private:
+    // Declare and initialize LookAndFeel under the editor class so it falls under this parent component
+    LookAndFeel lnf;
+
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     SimpleMBCompAudioProcessor& audioProcessor;
     
-    Placeholder controlBar, analyzer, /*globalControls,*/ bandControls;
+    Placeholder controlBar, analyzer /*globalControls,*/ /*bandControls*/;
     GlobalControls globalControls { audioProcessor.apvts };
+    CompressorBandControls bandControls { audioProcessor.apvts };
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleMBCompAudioProcessorEditor)
 };
