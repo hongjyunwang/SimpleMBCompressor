@@ -47,6 +47,9 @@ struct LookAndFeel : juce::LookAndFeel_V4
 
 struct RotarySliderWithLabels : juce::Slider
 {
+    // Constructor with initializer list
+    // "juce::Slider(...)" Initializes the base class juce::Slider with specific parameters
+    // setLookAndFeel is a member function of the Slider class
     RotarySliderWithLabels(juce::RangedAudioParameter& rap, const juce::String& unitSuffix) :
     juce::Slider(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag,
                  juce::Slider::TextEntryBoxPosition::NoTextBox), param(&rap), suffix(unitSuffix)
@@ -141,6 +144,32 @@ void makeAttachment(std::unique_ptr<Attachment>& attachment,
     attachment = std::make_unique<Attachment>(apvts, params.at(name), slider);
 }
 
+template<typename APVTS,
+        typename Params,
+        typename Name>
+juce::RangedAudioParameter& getParam(APVTS& apvts, const Params& params, const Name& name)
+{
+    auto param = apvts.getParameter(params.at(name));
+    jassert(param != nullptr);
+    
+    return *param;
+}
+
+juce::String getValString(const juce::RangedAudioParameter& param,
+                          bool getLow,
+                          juce::String suffix);
+
+template<typename Labels,
+         typename ParamType,
+         typename SuffixType>
+void addLabelPairs(Labels& labels, const ParamType& param, const SuffixType& suffix)
+{
+    // The labels here are "LabelPos" objects declared in the RotarySliderWithLabel struct
+    labels.clear();
+    labels.add({0.f, getValString(param, true, suffix)});
+    labels.add({1.f, getValString(param, false, suffix)});
+}
+
 struct GlobalControls : juce::Component
 {
     GlobalControls(juce::AudioProcessorValueTreeState& apvts);
@@ -149,7 +178,8 @@ struct GlobalControls : juce::Component
     void resized() override;
 
 private:
-    RotarySlider inGainSlider, lowMidXoverSlider, midHighXoverSlider, outGainSlider;
+    using RSWL = RotarySliderWithLabels;
+    std::unique_ptr<RSWL> inGainSlider, lowMidXoverSlider, midHighXoverSlider, outGainSlider;
     
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     std::unique_ptr<Attachment> inGainSliderAttachment,
