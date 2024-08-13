@@ -25,11 +25,22 @@ juce::String getValString(const juce::RangedAudioParameter& param,
                           bool getLow,
                           juce::String suffix)
 {
+    /*
+     Get the value string used for the labels on the left and right corners of a rotary slider
+     
+     Inputs:
+     - param: A reference to the parameter of the rotary slider
+     - getLow: A boolean value that defines whether we are setting the low value or not
+     - suffix: A juce::String that is the parameter's suffix
+     Outputs:
+     - str: The desired juce::String label
+     */
     juce::String str;
     
     auto val = getLow ? param.getNormalisableRange().start :
                         param.getNormalisableRange().end;
     
+    // If val exceeds 1000, add a k before the suffix on the output str
     bool useK = truncateKiloValue(val);
     str << val;
     if(useK)
@@ -269,12 +280,22 @@ Placeholder::Placeholder()
 //==============================================================================
 GlobalControls::GlobalControls(juce::AudioProcessorValueTreeState& apvts)
 {
+    // Retrieve the parameter map we declared in PluginProcessor.h
     using namespace Params;
     const auto& params = GetParams();
     
-    // Create pointers to the parameters
+    // Initialize pointers to the parameters
     auto getParamHelper = [&params, &apvts](const auto& name) -> auto&
     {
+        /*
+         This is essentially a wrapper around the function "getParam"
+         
+         Inputs:
+         - name: reference to the name of the parameter
+         Outputs:
+         - Returns a reference to the parameter itself
+         */
+        
         return getParam(apvts, params, name);
     };
     inGainSlider = std::make_unique<RSWL>(getParamHelper(Names::Gain_In), "dB");
@@ -285,6 +306,17 @@ GlobalControls::GlobalControls(juce::AudioProcessorValueTreeState& apvts)
     // Make slider attachments to the apvts
     auto makeAttachmentHelper = [&params, &apvts](auto& attachment, const auto& name, auto& slider)
     {
+        /*
+         This is essentially a wrapper around the function "makeAttachment"
+         
+         Inputs:
+         - attachment: reference to pointer unique_ptr<Attachment>
+         - name: reference to the name of the parameter
+         - slider: reference to a Slider object
+         Outputs:
+         - No return
+         - Creates an attachment between the slider and the parameter
+         */
         makeAttachment(attachment, apvts, params, name, slider);
     };
     makeAttachmentHelper(inGainSliderAttachment, 
@@ -300,6 +332,7 @@ GlobalControls::GlobalControls(juce::AudioProcessorValueTreeState& apvts)
                          Names::Gain_Out,
                          *outGainSlider);
     
+    // Add the labels on the left and right corners of the slider
     addLabelPairs(inGainSlider -> labels, getParamHelper(Names::Gain_In), "dB");
     addLabelPairs(lowMidXoverSlider -> labels, getParamHelper(Names::Low_Mid_Crossover_Freq), "Hz");
     addLabelPairs(midHighXoverSlider -> labels, getParamHelper(Names::Mid_High_Crossover_Freq), "Hz");
