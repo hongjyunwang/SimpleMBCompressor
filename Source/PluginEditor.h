@@ -28,10 +28,10 @@ GUI Roadmap:
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
-#include "LookAndFeel.h"
-#include "GlobalControls.h"
-#include "CompressorBandControls.h"
-#include "UtilityComponents.h"
+#include "GUI/LookAndFeel.h"
+#include "GUI/GlobalControls.h"
+#include "GUI/CompressorBandControls.h"
+#include "GUI/UtilityComponents.h"
 
 //==============================================================================
 
