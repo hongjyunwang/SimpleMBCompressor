@@ -256,6 +256,7 @@ juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
 
 juce::String RotarySliderWithLabels::getDisplayString() const
 {
+
     if( auto* choiceParam = dynamic_cast<juce::AudioParameterChoice*>(param) )
         return choiceParam->getCurrentChoiceName();
     
@@ -289,6 +290,7 @@ juce::String RotarySliderWithLabels::getDisplayString() const
 
 void RotarySliderWithLabels::changeParam(juce::RangedAudioParameter* p)
 {
+    // Reset the parameter this slider is attached to
     param = p;
     repaint();
 }
@@ -322,80 +324,6 @@ releaseSlider(nullptr, "ms", "RELEASE"),
 thresholdSlider(nullptr, "dB", "THRESHOLD"),
 ratioSlider(nullptr, "")
 {
-    // Retrieve the parameter map we declared in PluginProcessor.h
-    using namespace Params;
-    const auto& params = GetParams();
-    
-    // Initialize pointers to the parameters
-    auto getParamHelper = [&params, &apvts = this -> apvts](const auto& name) -> auto&
-    {
-        /*
-         This is essentially a wrapper around the function "getParam"
-         
-         Inputs:
-         - name: reference to the name of the parameter
-         Outputs:
-         - Returns a reference to the parameter itself
-         */
-        
-        return getParam(apvts, params, name);
-    };
-    
-    attackSlider.changeParam(&getParamHelper(Names::Attack_Mid_Band));
-    releaseSlider.changeParam(&getParamHelper(Names::Release_Mid_Band));
-    thresholdSlider.changeParam(&getParamHelper(Names::Threshold_Mid_Band));
-    ratioSlider.changeParam(&getParamHelper(Names::Ratio_Mid_Band));
-    
-    
-    // Make slider attachments to the apvts
-    auto makeAttachmentHelper = [&params, &apvts = this -> apvts](auto& attachment, const auto& name, auto& slider)
-    {
-        /*
-         This is essentially a wrapper around the function "makeAttachment"
-         
-         Inputs:
-         - attachment: reference to pointer unique_ptr<Attachment>
-         - name: reference to the name of the parameter
-         - slider: reference to a Slider object
-         Outputs:
-         - No return
-         - Creates an attachment between the slider and the parameter
-         */
-        makeAttachment(attachment, apvts, params, name, slider);
-    };
-    makeAttachmentHelper(attackSliderAttachment,
-                         Names::Attack_Mid_Band,
-                         attackSlider);
-    makeAttachmentHelper(releaseSliderAttachment,
-                         Names::Release_Mid_Band,
-                         releaseSlider);
-    makeAttachmentHelper(thresholdSliderAttachment,
-                         Names::Threshold_Mid_Band,
-                         thresholdSlider);
-    makeAttachmentHelper(ratioSliderAttachment,
-                         Names::Ratio_Mid_Band,
-                         ratioSlider);
-    
-    makeAttachmentHelper(bypassButtonAttachment,
-                         Names::Bypassed_Mid_Band,
-                         bypassButton);
-    makeAttachmentHelper(soloButtonAttachment,
-                         Names::Solo_Mid_Band,
-                         soloButton);
-    makeAttachmentHelper(muteButtonAttachment,
-                         Names::Mute_Mid_Band,
-                         muteButton);
-    
-    // Add the labels on the left and right corners of the slider
-    addLabelPairs(attackSlider.labels, getParamHelper(Names::Attack_Mid_Band), "ms");
-    addLabelPairs(releaseSlider.labels, getParamHelper(Names::Release_Mid_Band), "ms");
-    addLabelPairs(thresholdSlider.labels, getParamHelper(Names::Threshold_Mid_Band), "dB");
-    // Note that the labels for the ratio is slightly trickier to set. We do this manually as it is a choice parameter, making it different
-    ratioSlider.labels.add({0.f, "1:1"});
-    auto ratioParam = dynamic_cast<juce::AudioParameterChoice*>(&getParamHelper(Names::Ratio_Mid_Band));
-    ratioSlider.labels.add({1.f,
-        juce::String(ratioParam -> choices.getReference(ratioParam -> choices.size() - 1).getIntValue()) + ":1"});
-    
     addAndMakeVisible(attackSlider);
     addAndMakeVisible(releaseSlider);
     addAndMakeVisible(thresholdSlider);
@@ -417,6 +345,29 @@ ratioSlider(nullptr, "")
     lowBand.setRadioGroupId(1);
     midBand.setRadioGroupId(1);
     highBand.setRadioGroupId(1);
+    
+    // Create a lambda function for switching between bands
+    // buttonSwitcher is a callable object (specifically, a lambda function) that doesn't return a value. When assigned to onClick, it means that clicking the button will execute the lambda function.
+    // Hooking up the parameters to attachments is done in the updateAttachments function
+    auto buttonSwitcher = [safePtr = this -> safePtr]()
+    {
+        // Checks if safePtr is valid
+        if(auto* c = safePtr.getComponent())
+        {
+            c -> updateAttachments();
+        }
+    };
+    
+    // Assign the lambda function to the button click event handlers
+    // More simply put, we define what the button does when clicked through the lambda function
+    lowBand.onClick = buttonSwitcher;
+    midBand.onClick = buttonSwitcher;
+    highBand.onClick = buttonSwitcher;
+    
+    // We don't send a notification because that would trigger the lambda function
+    lowBand.setToggleState(true, juce::NotificationType::dontSendNotification);
+    
+    updateAttachments();
     
     addAndMakeVisible(lowBand);
     addAndMakeVisible(midBand);
@@ -457,9 +408,7 @@ void CompressorBandControls::resized()
     flexBox.flexWrap = FlexBox::Wrap::noWrap;
     
     auto spacer = FlexItem().withWidth(4);
-    auto endCap = FlexItem().withWidth(6);
     
-//    flexBox.items.add(endCap);
     flexBox.items.add(spacer);
     flexBox.items.add(FlexItem(bandSelectControlBox).withWidth(50));
     flexBox.items.add(spacer);
@@ -470,7 +419,6 @@ void CompressorBandControls::resized()
     flexBox.items.add(FlexItem(thresholdSlider).withFlex(1.f));
     flexBox.items.add(spacer);
     flexBox.items.add(FlexItem(ratioSlider).withFlex(1.f));
-//    flexBox.items.add(endCap);
     flexBox.items.add(spacer);
     flexBox.items.add(FlexItem(bandButtonControlBox).withWidth(30));
     
@@ -496,6 +444,164 @@ void CompressorBandControls::paint(juce::Graphics &g)
 {
     auto bounds = getLocalBounds();
     drawModuleBackground(g, bounds);
+}
+
+void CompressorBandControls::updateAttachments()
+{
+    // This function (1) figures out which button was clicked (2) figures out which parameters go with which buttons (3) Create parameters like we did in the constructor
+    enum BandType
+    {
+        Low,
+        Mid,
+        High
+    };
+    
+    // This lambda function is immediately called, setting variable bandType to the correct index from BandType enum
+    BandType bandType = [this]()
+    {
+        if(lowBand.getToggleState())
+            return BandType::Low;
+        if(midBand.getToggleState())
+            return BandType::Mid;
+        return BandType::High;
+    }();
+    
+    using namespace Params;
+    std::vector<Names> names;
+    
+    // Depending on variable bandType, the switch statement creates a vector "names" storing the index of the intended parameters from Names enumerator
+    switch (bandType)
+    {
+        case Low:
+        {
+            names = std::vector<Names>{
+                Names::Attack_Low_Band,
+                Names::Release_Low_Band,
+                Names::Threshold_Low_Band,
+                Names::Ratio_Low_Band,
+                Names::Mute_Low_Band,
+                Names::Solo_Low_Band,
+                Names::Bypassed_Low_Band
+            };
+            break;
+        }
+        case Mid:
+        {
+            names = std::vector<Names>{
+                Names::Attack_Mid_Band,
+                Names::Release_Mid_Band,
+                Names::Threshold_Mid_Band,
+                Names::Ratio_Mid_Band,
+                Names::Mute_Mid_Band,
+                Names::Solo_Mid_Band,
+                Names::Bypassed_Mid_Band
+            };
+            break;
+        }
+        case High:
+        {
+            names = std::vector<Names>{
+                Names::Attack_High_Band,
+                Names::Release_High_Band,
+                Names::Threshold_High_Band,
+                Names::Ratio_High_Band,
+                Names::Mute_High_Band,
+                Names::Solo_High_Band,
+                Names::Bypassed_High_Band
+            };
+            break;
+        }
+    }
+    
+    // Enumerate the positions of each control
+    enum Position
+    {
+        Attack,
+        Release,
+        Threshold,
+        Ratio,
+        Mute,
+        Solo,
+        Bypass
+    };
+    
+    std::cout << "Test Message";
+            
+    // Retrieve the map params from namespace Params
+    const auto& params = GetParams();
+    
+    auto getParamHelper = [&params, &apvts = this -> apvts, &names](const auto& pos) -> auto&
+    {
+        /*
+         This is essentially a wrapper around the function "getParam"
+         
+         Inputs:
+         - pos: index in vector names corresponding to the Names enumeration (from namspace Params) of the intended parameter
+         Outputs:
+         - Returns a reference to the parameter itself
+         */
+        return getParam(apvts, params, names.at(pos));
+    };
+    
+    // Reset the attachments before we begin the update
+    attackSliderAttachment.reset();
+    releaseSliderAttachment.reset();
+    thresholdSliderAttachment.reset();
+    ratioSliderAttachment.reset();
+    bypassButtonAttachment.reset();
+    soloButtonAttachment.reset();
+    muteButtonAttachment.reset();
+        
+    // Begin the update
+    // (1) Retrieve the correct parameter
+    // (2) Add the labels on the left and right corners of the slider
+    // (3) Update parameter
+    auto& attackParam = getParamHelper(Position::Attack);
+    addLabelPairs(attackSlider.labels, attackParam, "ms");
+    attackSlider.changeParam(&attackParam);
+    
+    auto& releaseParam = getParamHelper(Position::Release);
+    addLabelPairs(releaseSlider.labels, releaseParam, "ms");
+    releaseSlider.changeParam(&releaseParam);
+    
+    auto& thresholdParam = getParamHelper(Position::Attack);
+    addLabelPairs(thresholdSlider.labels, thresholdParam, "dB");
+    thresholdSlider.changeParam(&thresholdParam);
+    
+    auto& ratioParamRap = getParamHelper(Position::Ratio);
+    ratioSlider.labels.clear();
+    ratioSlider.labels.add({0.f, "1:1"});
+    auto ratioParam = dynamic_cast<juce::AudioParameterChoice*>(&ratioParamRap);
+    ratioSlider.labels.add({1.f,
+        juce::String(ratioParam -> choices.getReference(ratioParam -> choices.size() - 1).getIntValue()) + ":1"});
+    ratioSlider.changeParam(ratioParam);
+
+            
+    // Make slider attachments to the apvts
+    auto makeAttachmentHelper = [&params, &apvts = this -> apvts](auto& attachment, const auto& name, auto& slider)
+    {
+        /*
+         This is essentially a wrapper around the function "makeAttachment"
+         
+         Inputs:
+         - attachment: reference to pointer unique_ptr<Attachment>
+         - name: reference to the name of the parameter
+         - slider: reference to a Slider object
+         Outputs:
+         - No return
+         - Creates an attachment between the slider and the parameter
+         */
+        makeAttachment(attachment, apvts, params, name, slider);
+    };
+    
+    makeAttachmentHelper(attackSliderAttachment, names[Position::Attack], attackSlider);
+    makeAttachmentHelper(releaseSliderAttachment, names[Position::Release], releaseSlider);
+    makeAttachmentHelper(thresholdSliderAttachment, names[Position::Threshold], thresholdSlider);
+    makeAttachmentHelper(ratioSliderAttachment, names[Position::Ratio], ratioSlider);
+    makeAttachmentHelper(bypassButtonAttachment, names[Position::Bypass], bypassButton);
+    makeAttachmentHelper(muteButtonAttachment, names[Position::Mute], muteButton);
+    makeAttachmentHelper(soloButtonAttachment, names[Position::Solo], soloButton);
+
 }
 //==============================================================================
 GlobalControls::GlobalControls(juce::AudioProcessorValueTreeState& apvts)
