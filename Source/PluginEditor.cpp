@@ -329,6 +329,10 @@ ratioSlider(nullptr, "")
     addAndMakeVisible(thresholdSlider);
     addAndMakeVisible(ratioSlider);
     
+    bypassButton.addListener(this);
+    soloButton.addListener(this);
+    muteButton.addListener(this);
+    
     bypassButton.setName("X");
     soloButton.setName("S");
     muteButton.setName("M");
@@ -372,6 +376,13 @@ ratioSlider(nullptr, "")
     addAndMakeVisible(lowBand);
     addAndMakeVisible(midBand);
     addAndMakeVisible(highBand);
+}
+
+CompressorBandControls::~CompressorBandControls()
+{
+    bypassButton.removeListener(this);
+    soloButton.removeListener(this);
+    muteButton.removeListener(this);
 }
 
 void CompressorBandControls::resized()
@@ -444,6 +455,45 @@ void CompressorBandControls::paint(juce::Graphics &g)
 {
     auto bounds = getLocalBounds();
     drawModuleBackground(g, bounds);
+}
+
+void CompressorBandControls::buttonClicked(juce::Button *button)
+{
+    // Update Slider Enablement
+    // If the band is muted or bypassed, the sliders should be disabled
+    updateSliderEnablements();
+    // In this function we control the enablement of the bypass/mute/solo buttons based on which on is clicked
+    updateSoloMuteBypassToggleStates(*button);
+}
+
+void CompressorBandControls::updateSliderEnablements()
+{
+    auto disabeled = muteButton.getToggleState() || bypassButton.getToggleState();
+    attackSlider.setEnabled(!disabeled);
+    releaseSlider.setEnabled(!disabeled);
+    thresholdSlider.setEnabled(!disabeled);
+    ratioSlider.setEnabled(!disabeled);
+}
+
+void CompressorBandControls::updateSoloMuteBypassToggleStates(juce::Button &clickedButton)
+{
+    // Only one button can be activated at a time
+    // Note that we send notifications here to update the parameter
+    if(&clickedButton == &soloButton && soloButton.getToggleState())
+    {
+        bypassButton.setToggleState(false, juce::NotificationType::sendNotification);
+        muteButton.setToggleState(false, juce::NotificationType::sendNotification);
+    }
+    if(&clickedButton == &muteButton && muteButton.getToggleState())
+    {
+        bypassButton.setToggleState(false, juce::NotificationType::sendNotification);
+        soloButton.setToggleState(false, juce::NotificationType::sendNotification);
+    }
+    if(&clickedButton == &bypassButton && bypassButton.getToggleState())
+    {
+        soloButton.setToggleState(false, juce::NotificationType::sendNotification);
+        muteButton.setToggleState(false, juce::NotificationType::sendNotification);
+    }
 }
 
 void CompressorBandControls::updateAttachments()
