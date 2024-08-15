@@ -42,8 +42,24 @@ private:
     
     juce::Component::SafePointer<CompressorBandControls> safePtr { this };
     
+    // ActiveBand defaults to the lowBand
+    // We need to update which band is the activeBand whenever we updateAttachments
+    juce::ToggleButton* activeBand = &lowBand;
+    
+    // Update attachments for construction
     void updateAttachments();
+    
+    // Disable the attack, release, threshold, and ratio sliders for the currently attached band if the mute or bypass buttons are on
     void updateSliderEnablements();
+    
+    // Make sure only one of the solo/mute/bypass buttons are on
     void updateSoloMuteBypassToggleStates(juce::Button& clickedButton);
-
+    
+    // These three functions update the fill color of the active band based on whether which of the solo/mute/bypass buttons is on
+    void updateActiveBandFillColor(juce::Button& clickedButton);
+    void resetActiveBandColors();
+    void refreshBandButtonColors(juce::Button &band, juce::Button &colorSource);
+    
+    // This function is only called during construction for the band select buttons to show the correct colors of the band buttons when GUI is initially loaded
+    void updateBandSelectButtonStates();
 };

@@ -128,7 +128,9 @@ void LookAndFeel::drawToggleButton(juce::Graphics &g,
         const int cornersize = 4;
         
         // Draw the body of the rounded rectangle
-        g.setColour(buttonIsOn ? juce::Colours::white : juce::Colours::black);
+        g.setColour(buttonIsOn ? 
+                    toggleButton.findColour(TextButton::ColourIds::buttonOnColourId) :
+                    toggleButton.findColour(TextButton::ColourIds::buttonColourId));
         g.fillRoundedRectangle(bounds.toFloat(), cornersize);
         
         // Draw the outline of the rectangle
