@@ -12,6 +12,9 @@
               file="Source/DSP/CompressorBand.h"/>
         <FILE id="GHdF8Y" name="Params.cpp" compile="1" resource="0" file="Source/DSP/Params.cpp"/>
         <FILE id="oLzR9N" name="Params.h" compile="0" resource="0" file="Source/DSP/Params.h"/>
+        <FILE id="jLiTyy" name="Fifo.h" compile="0" resource="0" file="Source/DSP/Fifo.h"/>
+        <FILE id="PuXQK8" name="SingleChannelSampleFifo.h" compile="0" resource="0"
+              file="Source/DSP/SingleChannelSampleFifo.h"/>
       </GROUP>
       <GROUP id="{39BF0E48-F8CE-C138-6E85-A96C02A794ED}" name="GUI">
         <FILE id="TVNChi" name="CompressorBandControls.cpp" compile="1" resource="0"
@@ -37,6 +40,21 @@
               file="Source/GUI/UtilityComponents.cpp"/>
         <FILE id="W3FpYR" name="UtilityComponents.h" compile="0" resource="0"
               file="Source/GUI/UtilityComponents.h"/>
+        <FILE id="PFf9hp" name="FFTDataGenerator.cpp" compile="1" resource="0"
+              file="Source/GUI/FFTDataGenerator.cpp"/>
+        <FILE id="bYaHrp" name="FFTDataGenerator.h" compile="0" resource="0"
+              file="Source/GUI/FFTDataGenerator.h"/>
+        <FILE id="AMCUu8" name="AnalyzerPathGenerator.cpp" compile="1" resource="0"
+              file="Source/GUI/AnalyzerPathGenerator.cpp"/>
+        <FILE id="g1Qwnk" name="AnalyzerPathGenerator.h" compile="0" resource="0"
+              file="Source/GUI/AnalyzerPathGenerator.h"/>
+        <FILE id="W3cUjP" name="PathProducer.cpp" compile="1" resource="0"
+              file="Source/GUI/PathProducer.cpp"/>
+        <FILE id="XG82Rd" name="PathProducer.h" compile="0" resource="0" file="Source/GUI/PathProducer.h"/>
+        <FILE id="Gyq2ie" name="SpectrumAnalyzer.cpp" compile="1" resource="0"
+              file="Source/GUI/SpectrumAnalyzer.cpp"/>
+        <FILE id="H9eS0M" name="SpectrumAnalyzer.h" compile="0" resource="0"
+              file="Source/GUI/SpectrumAnalyzer.h"/>
       </GROUP>
       <FILE id="FFuFjc" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
