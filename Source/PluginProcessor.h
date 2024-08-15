@@ -9,6 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "CompressorBand.h"
 
 /*
  DSP Roadmap
@@ -21,128 +22,6 @@
  7) Add input and output gain to offset changes in output level (v)
  8) Clean up
  */
-
-namespace Params
-{
-
-// Names is an enumerator. For example, we access a "Low Mid Crossover Freq"'s number through "Names::Low_Mid_Crossover_Freq"
-// params is a map that maps the enumerated parameter to a string that is the parameter ID
-
-enum Names
-{
-    Low_Mid_Crossover_Freq,
-    Mid_High_Crossover_Freq,
-    
-    Threshold_Low_Band,
-    Threshold_Mid_Band,
-    Threshold_High_Band,
-    
-    Attack_Low_Band,
-    Attack_Mid_Band,
-    Attack_High_Band,
-    
-    Release_Low_Band,
-    Release_Mid_Band,
-    Release_High_Band,
-    
-    Ratio_Low_Band,
-    Ratio_Mid_Band,
-    Ratio_High_Band,
-    
-    Bypassed_Low_Band,
-    Bypassed_Mid_Band,
-    Bypassed_High_Band,
-    
-    Mute_Low_Band,
-    Mute_Mid_Band,
-    Mute_High_Band,
-    
-    Solo_Low_Band,
-    Solo_Mid_Band,
-    Solo_High_Band,
-    
-    Gain_In,
-    Gain_Out,
-};
-
-inline const std::map<Names, juce::String>& GetParams()
-{
-    static std::map<Names, juce::String> params =
-    {
-        {Low_Mid_Crossover_Freq, "Low Mid Crossover Freq"},
-        {Mid_High_Crossover_Freq, "Mid High Crossover Freq"},
-        {Threshold_Low_Band,"Threshold Low Band"},
-        {Threshold_Mid_Band, "Threshold Mid Band"},
-        {Threshold_High_Band, "Threshold High Band"},
-        {Attack_Low_Band, "Attack Low Band"},
-        {Attack_Mid_Band, "Attack Mid Band"},
-        {Attack_High_Band, "Attack High Band"},
-        {Release_Low_Band, "Release Low Band"},
-        {Release_Mid_Band, "Release Mid Band"},
-        {Release_High_Band, "Release High Band"},
-        {Ratio_Low_Band, "Ratio Low Band"},
-        {Ratio_Mid_Band, "Ratio Mid Band"},
-        {Ratio_High_Band, "Ratio High Band"},
-        {Bypassed_Low_Band, "Bypassed Low Band"},
-        {Bypassed_Mid_Band, "Bypassed Mid Band"},
-        {Bypassed_High_Band, "Bypassed High Band"},
-        
-        {Mute_Low_Band, "Mute Low Band"},
-        {Mute_Mid_Band, "Mute Mid Band"},
-        {Mute_High_Band, "Mute High Band"},
-        
-        {Solo_Low_Band, "Solo Low Band"},
-        {Solo_Mid_Band, "Solo Mid Band"},
-        {Solo_High_Band, "Solo High Band"},
-        
-        {Gain_In, "Gain In"},
-        {Gain_Out, "Gain Out"},
-    };
-    
-    return params;
-}
-}
-
-struct CompressorBand
-{
-    
-    // Note that the "compressor" instance used in this struct's member functions is the private member that is actually a juce::dsp::Compressor<float> object
-    // The "compressor" instance used outside of this struct are all instances of the CompressorBand struct
-    
-    // Create caching pointers to the audio parameters
-    juce::AudioParameterFloat* attack {nullptr};
-    juce::AudioParameterFloat* release {nullptr};
-    juce::AudioParameterFloat* threshold {nullptr};
-    juce::AudioParameterChoice* ratio {nullptr};
-    juce::AudioParameterBool* bypassed {nullptr};
-    juce::AudioParameterBool* mute {nullptr};
-    juce::AudioParameterBool* solo {nullptr};
-    
-    void prepare(const juce::dsp::ProcessSpec& spec)
-    {
-        compressor.prepare(spec);
-    }
-    
-    void updateCompressorSettings()
-    {
-        compressor.setAttack(attack -> get());
-        compressor.setRelease(release -> get());
-        compressor.setThreshold(threshold -> get());
-        // Use a helper function to get the ratio value from the choicebox string array
-        compressor.setRatio(ratio -> getCurrentChoiceName().getFloatValue());
-    }
-    
-    void process(juce::AudioBuffer<float>& buffer)
-    {
-        // The compressor needs a context to process audio and the context needs an audio block to be constructed
-        auto block = juce::dsp::AudioBlock<float>(buffer);
-        auto context = juce::dsp::ProcessContextReplacing<float>(block);
-        context.isBypassed = bypassed -> get();
-        compressor.process(context);
-    }
-private:
-    juce::dsp::Compressor<float> compressor;
-};
 
 //==============================================================================
 /**
