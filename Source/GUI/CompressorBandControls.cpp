@@ -252,7 +252,7 @@ void CompressorBandControls::updateBandSelectButtonStates()
         {
             refreshBandButtonColors(*bandButton, muteButton);
         }
-        else if(auto* bypass = paramHelper(list[1]); bypass -> get())
+        else if(auto* bypass = paramHelper(list[2]); bypass -> get())
         {
             refreshBandButtonColors(*bandButton, bypassButton);
         }
