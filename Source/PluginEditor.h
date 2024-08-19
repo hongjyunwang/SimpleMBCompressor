@@ -22,8 +22,8 @@ GUI Roadmap:
  10) implementation of the analyzer rendering pre-computed paths (adapt from Simple EQ) (v)
  11) drawing crossover on top of the analyzer plot (v)
  12) Drawing gain reduction on top of the analyzer (v)
- 13) Analyzer Bypass (adapt from Simple EQ)
- 14) Global Bypass button
+ 13) Analyzer Bypass (adapt from Simple EQ) (v)
+ 14) Global Bypass button (v)
  */
 
 #include <JuceHeader.h>
@@ -33,6 +33,16 @@ GUI Roadmap:
 #include "GUI/CompressorBandControls.h"
 #include "GUI/UtilityComponents.h"
 #include "GUI/SpectrumAnalyzer.h"
+#include "GUI/CustomButtons.h"
+
+struct ControlBar : juce::Component
+{
+    ControlBar();
+    void resized() override;
+    
+    AnalyzerButton analyzerbutton;
+    PowerButton globalBypassButton;
+};
 
 //==============================================================================
 
@@ -55,10 +65,15 @@ private:
     // access the processor object that created it.
     SimpleMBCompAudioProcessor& audioProcessor;
     
-    Placeholder controlBar /*, analyzer */ /*globalControls,*/ /*bandControls*/;
+    ControlBar controlBar;
     GlobalControls globalControls { audioProcessor.apvts };
     CompressorBandControls bandControls { audioProcessor.apvts };
     SpectrumAnalyzer analyzer { audioProcessor };
+    
+    void toggleGlobalBypassState();
+    std::array<juce::AudioParameterBool*, 3> getBypassParams();
+    
+    void updateGlobalBypassButton();
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleMBCompAudioProcessorEditor)
 };
