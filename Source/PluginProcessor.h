@@ -78,8 +78,6 @@ public:
     using BlockType = juce::AudioBuffer<float>;
     SingleChannelSampleFifo<BlockType> leftChannelFifo { Channel::Left };
     SingleChannelSampleFifo<BlockType> rightChannelFifo { Channel::Right };
-
-private:
     
     // Array of CompressorBand objects
     std::array<CompressorBand, 3> compressors;
@@ -87,6 +85,7 @@ private:
     CompressorBand& midBandComp = compressors[1];
     CompressorBand& highBandComp = compressors[2];
     
+private:
     using Filter = juce::dsp::LinkwitzRileyFilter<float>;
     // Since filters are constructed through delays, we need to make sure the timing of all bands are the same
     // The specific scheme is described in the tutorial. It is also roughly shown here visually

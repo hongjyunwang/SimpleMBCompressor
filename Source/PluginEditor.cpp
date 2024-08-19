@@ -21,6 +21,8 @@ SimpleMBCompAudioProcessorEditor::SimpleMBCompAudioProcessorEditor (SimpleMBComp
     addAndMakeVisible(globalControls);
     addAndMakeVisible(bandControls);
     setSize (600, 500);
+    
+    startTimerHz(60);
 }
 
 SimpleMBCompAudioProcessorEditor::~SimpleMBCompAudioProcessorEditor()
@@ -43,4 +45,21 @@ void SimpleMBCompAudioProcessorEditor::resized()
     bandControls.setBounds(bounds.removeFromBottom(135));
     analyzer.setBounds(bounds.removeFromTop(225));
     globalControls.setBounds(bounds);
+}
+
+// Callback with a timer to retrieve the RMS levels for gain reduction GUI update
+
+void SimpleMBCompAudioProcessorEditor::timerCallback()
+{
+    std::vector<float> values
+    {
+        audioProcessor.lowBandComp.getRMSInputLevelDb(),
+        audioProcessor.lowBandComp.getRMSOutputLevelDb(),
+        audioProcessor.midBandComp.getRMSInputLevelDb(),
+        audioProcessor.midBandComp.getRMSOutputLevelDb(),
+        audioProcessor.highBandComp.getRMSInputLevelDb(),
+        audioProcessor.highBandComp.getRMSOutputLevelDb(),
+    };
+    
+    analyzer.update(values);
 }

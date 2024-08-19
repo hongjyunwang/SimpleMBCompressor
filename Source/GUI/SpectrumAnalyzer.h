@@ -33,6 +33,9 @@ juce::Timer
     {
         shouldShowFFTAnalysis = enabled;
     }
+    
+    void update(const std::vector<float>& values);
+    
 private:
     SimpleMBCompAudioProcessor& audioProcessor;
 
@@ -63,4 +66,8 @@ private:
     juce::AudioParameterFloat* lowThresholdParam {nullptr};
     juce::AudioParameterFloat* midThresholdParam {nullptr};
     juce::AudioParameterFloat* highThresholdParam {nullptr};
+    
+    float lowBandGR {0.f};
+    float midBandGR {0.f};
+    float highBandGR {0.f};
 };

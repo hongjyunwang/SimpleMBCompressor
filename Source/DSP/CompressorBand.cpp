@@ -26,9 +26,21 @@ void CompressorBand::updateCompressorSettings()
 
 void CompressorBand::process(juce::AudioBuffer<float>& buffer)
 {
+    auto preRMS = computeRMSLevel(buffer);
+    
     // The compressor needs a context to process audio and the context needs an audio block to be constructed
     auto block = juce::dsp::AudioBlock<float>(buffer);
     auto context = juce::dsp::ProcessContextReplacing<float>(block);
     context.isBypassed = bypassed -> get();
     compressor.process(context);
+    
+    auto postRMS = computeRMSLevel(buffer);
+    
+    auto convertToDb = [](auto input)
+    {
+        return juce::Decibels::gainToDecibels(input);
+    };
+    
+    rmsInputLevelDb.store(convertToDb(preRMS));
+    rmsOutputLevelDb.store(convertToDb(postRMS));
 }

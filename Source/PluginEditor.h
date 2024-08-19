@@ -20,8 +20,8 @@ GUI Roadmap:
  8) Data structures for spectrum analyzer (adapt from Simple EQ) (v)
  9) Fifo usage in pluginProcessor::procesBlock (v)
  10) implementation of the analyzer rendering pre-computed paths (adapt from Simple EQ) (v)
- 11) drawing crossover on top of the analyzer plot
- 12) Drawing gain reduction on top of the analyzer
+ 11) drawing crossover on top of the analyzer plot (v)
+ 12) Drawing gain reduction on top of the analyzer (v)
  13) Analyzer Bypass (adapt from Simple EQ)
  14) Global Bypass button
  */
@@ -36,7 +36,7 @@ GUI Roadmap:
 
 //==============================================================================
 
-class SimpleMBCompAudioProcessorEditor  : public juce::AudioProcessorEditor
+class SimpleMBCompAudioProcessorEditor  : public juce::AudioProcessorEditor, juce::Timer
 {
 public:
     SimpleMBCompAudioProcessorEditor (SimpleMBCompAudioProcessor&);
@@ -46,6 +46,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
+    void timerCallback() override;
 private:
     // Declare and initialize LookAndFeel under the editor class so it falls under this parent component
     LookAndFeel lnf;
