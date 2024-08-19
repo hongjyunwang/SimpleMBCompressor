@@ -427,7 +427,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleMBCompAudioProcessor::
     
     // Adding numeric parameters (Threshold, attack, release, Gain)
     auto gainRange = NormalisableRange<float>(-24.0f, 24.0f, 0.5f, 1.0f);
-    auto thresholdRange = NormalisableRange<float>(-60, 12, 1, 1);
+    auto thresholdRange = NormalisableRange<float>(MIN_THRESHOLD, MAX_DECIBELS, 1, 1);
     auto attackReleaseRange = NormalisableRange<float>(5, 500, 1, 1);
 
     layout.add(std::make_unique<AudioParameterFloat>(ParameterID {params.at(Names::Gain_In), 1},
